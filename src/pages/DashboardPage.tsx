@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const DashboardPage = () => {
   const { isDarkMode } = useTheme();
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   const stats = [
     { icon: <Users size={24} />, label: 'Active Clients', value: '24' },
@@ -35,7 +35,7 @@ const DashboardPage = () => {
             </div>
             <div className="flex items-center gap-4">
               <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} transition-colors duration-300`}>
-                Welcome, {profile?.role}
+                Welcome, {profile?.full_name || user?.email}
               </span>
               <button
                 onClick={signOut}

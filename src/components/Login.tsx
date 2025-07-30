@@ -1,55 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, testSupabaseConnection } from '../lib/supabase';
 
 const Login = () => {
   const { isDarkMode } = useTheme();
-  const { user, profile, loading } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    fullName: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Handle redirect when auth state changes
+  // Redirect authenticated users
   React.useEffect(() => {
     if (user && !loading) {
-      console.log('🚀 Login: User authenticated, checking profile...', { user: user.email, profile });
-      setIsLoading(false);
-      
-      if (profile) {
-        // Profile is loaded, redirect based on role
-        console.log('🚀 Login: Profile loaded, redirecting based on role:', profile.role);
-        if (profile.role === 'President') {
-          navigate('/dashboard', { replace: true });
-        } else {
-          navigate('/invoices', { replace: true });
-        }
-      } else {
-        // Profile not loaded yet, wait a bit more or redirect to user setup
-        console.log('🚀 Login: Profile not loaded yet, waiting...');
-        const timeoutId = setTimeout(() => {
-          if (!profile) {
-            console.log('🚀 Login: Profile still not loaded, redirecting to user setup');
-            navigate('/user-setup', { replace: true });
-          }
-        }, 2000);
-        
-        return () => clearTimeout(timeoutId);
-      }
+      console.log('🚀 User authenticated, redirecting to dashboard');
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, profile, loading, navigate]);
-
-  // Test Supabase connection on component mount
-  React.useEffect(() => {
-    testSupabaseConnection();
-  }, []);
+  }, [user, loading, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -62,29 +37,43 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError('');
     
-    console.log('🔐 Login: Starting authentication for:', formData.email);
+    console.log(`🔐 ${isSignUp ? 'Sign up' : 'Sign in'} attempt for:`, formData.email);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
+      let result;
       
-      if (error) throw error;
+      if (isSignUp) {
+        result = await signUp(formData.email, formData.password, formData.fullName);
+      } else {
+        result = await signIn(formData.email, formData.password);
+      }
       
-      console.log('✅ Login: Authentication successful!');
-      console.log('⏳ Login: Waiting for profile to load...');
-      // Don't set loading to false here - let the useEffect handle it
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      console.log(`✅ ${isSignUp ? 'Sign up' : 'Sign in'} successful!`);
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.';
-      console.error('❌ Login: Error:', errorMessage);
+      console.error(`❌ ${isSignUp ? 'Sign up' : 'Sign in'} error:`, errorMessage);
       setError(errorMessage);
-      setIsLoading(false);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setError('');
+    setFormData({
+      email: '',
+      password: '',
+      fullName: ''
+    });
   };
 
   return (
@@ -93,14 +82,38 @@ const Login = () => {
         <div className="text-center mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-green-500 mb-2">Terranova</h1>
           <h2 className={`text-xl md:text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2 transition-colors duration-300`}>
-            Welcome Back
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
           </h2>
           <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} transition-colors duration-300`}>
-            Sign in to your account
+            {isSignUp ? 'Sign up for your account' : 'Sign in to your account'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+          {/* Full Name Field (Sign Up Only) */}
+          {isSignUp && (
+            <div>
+              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
+                Full Name
+              </label>
+              <div className="relative">
+                <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors duration-300`} size={20} />
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  className={`w-full pl-12 pr-4 py-3 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
+                  placeholder="Enter your full name"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Email Field */}
           <div>
             <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
@@ -137,6 +150,7 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
+                minLength={6}
                 className={`w-full pl-12 pr-12 py-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
@@ -156,7 +170,7 @@ const Login = () => {
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 animate-pulse">
+            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500">
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
                 <p className="text-sm font-medium">{error}</p>
@@ -167,20 +181,34 @@ const Login = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isSubmitting || loading}
             className={`w-full bg-green-500 hover:bg-green-400 disabled:bg-green-600 disabled:cursor-not-allowed text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 ${
-              isLoading ? 'opacity-75' : ''
+              isSubmitting || loading ? 'opacity-75' : ''
             }`}
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                <span>Signing In...</span>
+                <span>{isSignUp ? 'Creating Account...' : 'Signing In...'}</span>
               </div>
             ) : (
-              <span>Sign In</span>
+              <span>{isSignUp ? 'Create Account' : 'Sign In'}</span>
             )}
           </button>
+
+          {/* Toggle Mode */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={toggleMode}
+              className={`text-green-500 hover:text-green-400 font-medium transition-colors duration-300`}
+            >
+              {isSignUp 
+                ? 'Already have an account? Sign in' 
+                : "Don't have an account? Sign up"
+              }
+            </button>
+          </div>
         </form>
 
         <div className={`mt-6 md:mt-8 pt-6 border-t ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} transition-colors duration-300`}>

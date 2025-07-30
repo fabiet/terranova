@@ -4,11 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'President' | 'Client';
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { user, profile, loading } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -23,17 +22,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
 
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole && profile?.role !== requiredRole) {
-    // Redirect based on actual role
-    if (profile?.role === 'President') {
-      return <Navigate to="/dashboard" replace />;
-    } else if (profile?.role === 'Client') {
-      return <Navigate to="/invoices" replace />;
-    } else {
-      return <Navigate to="/login" replace />;
-    }
   }
 
   return <>{children}</>;

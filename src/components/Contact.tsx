@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { supabase } from '../lib/supabase';
+import { submitContactMessage } from '../lib/supabase';
 
 const Contact = () => {
   const { isDarkMode } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
-    project: '',
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,26 +27,20 @@ const Contact = () => {
     setSubmitStatus('idle');
 
     try {
-      const { error } = await supabase
-        .from('contact_submissions')
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone || null,
-            project: formData.project || null,
-            message: formData.message
-          }
-        ]);
+      const result = await submitContactMessage({
+        name: formData.name,
+        email: formData.email,
+        message: formData.message
+      });
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
       setSubmitStatus('success');
       setFormData({
         name: '',
         email: '',
-        phone: '',
-        project: '',
         message: ''
       });
     } catch (error) {
@@ -116,88 +108,47 @@ const Contact = () => {
             </h3>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      isDarkMode 
-                        ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
-                    placeholder="Enter your full name"
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      isDarkMode 
-                        ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      isDarkMode 
-                        ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
-                    Project Type
-                  </label>
-                  <select
-                    name="project"
-                    value={formData.project}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      isDarkMode 
-                        ? 'bg-zinc-800 border-gray-700 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
-                  >
-                    <option value="">Select project type</option>
-                    {projectTypes.map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
+                  placeholder="Enter your full name"
+                />
               </div>
 
               <div>
                 <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
-                  Project Details *
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300`}
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 transition-colors duration-300`}>
+                  Message *
                 </label>
                 <textarea
                   name="message"
@@ -210,7 +161,7 @@ const Contact = () => {
                       ? 'bg-zinc-800 border-gray-700 text-white placeholder-gray-400' 
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                   } focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-300 resize-none`}
-                  placeholder="Tell us about your project, timeline, budget, and any specific requirements..."
+                  placeholder="Tell us about your project and how we can help..."
                 ></textarea>
               </div>
 
@@ -236,7 +187,7 @@ const Contact = () => {
               {submitStatus === 'success' && (
                 <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                   <p className="text-green-500 font-medium">
-                    Thank you! Your message has been sent successfully. We'll get back to you within 24 hours.
+                    ✅ Thank you! Your message has been sent successfully. We'll get back to you within 24 hours.
                   </p>
                 </div>
               )}
@@ -244,7 +195,7 @@ const Contact = () => {
               {submitStatus === 'error' && (
                 <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                   <p className="text-red-500 font-medium">
-                    Sorry, there was an error sending your message. Please try again or contact us directly.
+                    ❌ Sorry, there was an error sending your message. Please try again or contact us directly.
                   </p>
                 </div>
               )}

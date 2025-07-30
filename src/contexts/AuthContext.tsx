@@ -1,19 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-
-interface UserProfile {
-  id: string;
-  role: 'President' | 'Client';
-  created_at: string;
-  updated_at: string;
-}
+import { supabase, getUserProfile, createUserProfile, UserProfile } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -29,16 +24,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        console.error('AuthContext session error:', error.message);
+        console.error('❌ AuthContext session error:', error.message);
         setLoading(false);
         return;
       }
 
+      console.log('🔍 Initial session:', session ? 'exists' : 'none');
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        fetchUserProfile(session.user);
       } else {
         setLoading(false);
       }
@@ -48,13 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
+      console.log('🔄 Auth state changed:', event);
       
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        await fetchUserProfile(session.user.id);
+        await fetchUserProfile(session.user);
       } else {
         setProfile(null);
         setLoading(false);
@@ -66,63 +62,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (user: User) => {
     try {
-      console.log('🔍 Fetching user profile for:', userId);
+      console.log('🔍 Fetching user profile for:', user.email);
       
-      // Add timeout to profile fetch
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Profile fetch timeout after 15 seconds')), 15000);
-      });
+      const result = await getUserProfile(user.id);
       
-      const profilePromise = supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      const result = await Promise.race([profilePromise, timeoutPromise]);
-      const { data, error } = result as { data: unknown; error: unknown };
-
-      if (error) {
-        const errorObj = error as { message: string; code?: string };
-        console.log('⚠️ Profile fetch error:', errorObj.message, 'Code:', errorObj.code);
-        
-        // If profile doesn't exist, create it
-        if (errorObj.code === 'PGRST116') {
-          console.log('🔧 Creating new user profile...');
-          
-          const insertPromise = supabase
-            .from('user_profiles')
-            .insert({ id: userId, role: 'Client' })
-            .select()
-            .single();
-            
-          const insertResult = await Promise.race([insertPromise, timeoutPromise]);
-          const { data: insertData, error: insertError } = insertResult as { data: unknown; error: unknown };
-            
-          if (insertError) {
-            const insertErrorObj = insertError as { message: string };
-            console.error('❌ Profile creation error:', insertErrorObj.message);
-            // Don't set loading to false here, let the finally block handle it
-          } else {
-            console.log('✅ Profile created successfully:', insertData);
-            setProfile(insertData);
-          }
-        } else {
-          console.error('❌ Unexpected profile fetch error:', errorObj.message);
-        }
+      if (result.success) {
+        console.log('✅ Profile fetched successfully:', result.data);
+        setProfile(result.data);
       } else {
-        console.log('✅ Profile fetched successfully:', data);
-        setProfile(data);
+        // Profile doesn't exist, create it
+        console.log('🔧 Creating new user profile...');
+        
+        const createResult = await createUserProfile({
+          id: user.id,
+          email: user.email || '',
+          full_name: user.user_metadata?.full_name
+        });
+        
+        if (createResult.success) {
+          console.log('✅ Profile created successfully:', createResult.data);
+          setProfile(createResult.data);
+        } else {
+          console.error('❌ Failed to create profile:', createResult.error);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Profile fetch exception:', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    try {
+      setLoading(true);
       
-      if (errorMessage.includes('timeout')) {
-        console.error('🕐 This suggests a network connectivity issue or Supabase service problem');
-      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      console.log('✅ Sign up successful:', data);
+      return { success: true };
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Sign up error:', errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+      
+      console.log('✅ Sign in successful:', data);
+      return { success: true };
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Sign in error:', errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -131,21 +150,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error.message);
-      } else {
-        setUser(null);
-        setProfile(null);
-        setSession(null);
-        window.location.href = '/';
-      }
+      if (error) throw error;
+      
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
+      console.log('✅ Sign out successful');
+      
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Sign out error:', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      session, 
+      loading, 
+      signUp, 
+      signIn, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );
