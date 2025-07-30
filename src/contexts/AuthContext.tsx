@@ -70,41 +70,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🔍 Fetching user profile for:', userId);
       
-      const { data, error } = await supabase
+      // Add timeout to profile fetch
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout after 15 seconds')), 15000);
+      });
+      
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single();
+      
+      const result = await Promise.race([profilePromise, timeoutPromise]);
+      const { data, error } = result as { data: unknown; error: unknown };
 
       if (error) {
-        console.log('⚠️ Profile fetch error:', error.message, 'Code:', error.code);
+        const errorObj = error as { message: string; code?: string };
+        console.log('⚠️ Profile fetch error:', errorObj.message, 'Code:', errorObj.code);
         
         // If profile doesn't exist, create it
-        if (error.code === 'PGRST116') {
+        if (errorObj.code === 'PGRST116') {
           console.log('🔧 Creating new user profile...');
           
-          const { data: insertData, error: insertError } = await supabase
+          const insertPromise = supabase
             .from('user_profiles')
             .insert({ id: userId, role: 'Client' })
             .select()
             .single();
             
+          const insertResult = await Promise.race([insertPromise, timeoutPromise]);
+          const { data: insertData, error: insertError } = insertResult as { data: unknown; error: unknown };
+            
           if (insertError) {
-            console.error('❌ Profile creation error:', insertError.message);
+            const insertErrorObj = insertError as { message: string };
+            console.error('❌ Profile creation error:', insertErrorObj.message);
             // Don't set loading to false here, let the finally block handle it
           } else {
             console.log('✅ Profile created successfully:', insertData);
             setProfile(insertData);
           }
         } else {
-          console.error('❌ Unexpected profile fetch error:', error.message);
+          console.error('❌ Unexpected profile fetch error:', errorObj.message);
         }
       } else {
         console.log('✅ Profile fetched successfully:', data);
         setProfile(data);
       }
     } catch (error) {
-      console.error('❌ Profile fetch exception:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Profile fetch exception:', errorMessage);
+      
+      if (errorMessage.includes('timeout')) {
+        console.error('🕐 This suggests a network connectivity issue or Supabase service problem');
+      }
     } finally {
       setLoading(false);
     }

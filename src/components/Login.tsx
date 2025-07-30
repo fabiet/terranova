@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase, testSupabaseConnection } from '../lib/supabase';
 
 const Login = () => {
   const { isDarkMode } = useTheme();
@@ -48,26 +48,7 @@ const Login = () => {
 
   // Test Supabase connection on component mount
   React.useEffect(() => {
-    const testConnection = async () => {
-      try {
-        console.log('🔍 Testing Supabase connection...');
-        console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-        console.log('Supabase Anon Key exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-        
-        // Test basic connection
-        const { error } = await supabase.from('user_profiles').select('count').limit(1);
-        
-        if (error) {
-          console.error('❌ Supabase connection test failed:', error);
-        } else {
-          console.log('✅ Supabase connection test successful');
-        }
-      } catch (err) {
-        console.error('❌ Supabase connection error:', err);
-      }
-    };
-    
-    testConnection();
+    testSupabaseConnection();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
