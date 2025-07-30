@@ -175,8 +175,11 @@ const Login = () => {
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500">
-              <p className="text-sm font-medium">{error}</p>
+            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 animate-pulse">
+              <div className="flex items-start gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p className="text-sm font-medium">{error}</p>
+              </div>
             </div>
           )}
 
@@ -184,15 +187,17 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full bg-green-500 hover:bg-green-400 disabled:bg-green-600 disabled:cursor-not-allowed text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/25`}
+            className={`w-full bg-green-500 hover:bg-green-400 disabled:bg-green-600 disabled:cursor-not-allowed text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 ${
+              isLoading ? 'opacity-75' : ''
+            }`}
           >
             {isLoading ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                Signing In...
+                <span>Signing In...</span>
               </div>
             ) : (
-              'Sign In'
+              <span>Sign In</span>
             )}
           </button>
         </form>

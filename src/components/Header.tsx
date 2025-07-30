@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogIn } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Header = () => {
@@ -44,7 +45,7 @@ const Header = () => {
           </div>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-8">
+          <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -61,6 +62,19 @@ const Header = () => {
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-green-500 transition-all duration-300 group-hover:w-full"></span>
               </button>
             ))}
+            
+            {/* Login Button */}
+            <Link
+              to="/login"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
+                isDarkMode
+                  ? 'bg-green-500 text-black hover:bg-green-400'
+                  : 'bg-green-500 text-black hover:bg-green-400'
+              }`}
+            >
+              <LogIn size={16} />
+              <span className="font-medium">Login</span>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -92,6 +106,20 @@ const Header = () => {
                 {item.label}
               </button>
             ))}
+            
+            {/* Mobile Login Button */}
+            <Link
+              to="/login"
+              className={`flex items-center gap-2 w-full px-4 py-2 mt-4 rounded-lg transition-all duration-300 ${
+                isDarkMode
+                  ? 'bg-green-500 text-black hover:bg-green-400'
+                  : 'bg-green-500 text-black hover:bg-green-400'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <LogIn size={16} />
+              <span className="font-medium">Login</span>
+            </Link>
           </div>
         )}
       </nav>

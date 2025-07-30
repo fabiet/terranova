@@ -34,13 +34,14 @@ const ProfileSetup: React.FC = () => {
       const result = await Promise.race([
         connectionPromise,
         timeoutPromise
-      ]) as { data: any; error: any };
+      ]) as { data: unknown; error: unknown };
       
-      const { data: testData, error: testError } = result;
+      const { error: testError } = result;
       
       if (testError) {
-        console.error('❌ Database connection test failed:', testError);
-        setMessage(`❌ Database connection failed: ${testError.message}`);
+        const errorMessage = testError instanceof Error ? testError.message : 'Unknown connection error';
+        console.error('❌ Database connection test failed:', errorMessage);
+        setMessage(`❌ Database connection failed: ${errorMessage}`);
         setIsCreating(false);
         return;
       }
@@ -60,7 +61,7 @@ const ProfileSetup: React.FC = () => {
       const insertResult = await Promise.race([
         insertPromise,
         timeoutPromise
-      ]) as { data: any; error: any };
+      ]) as { data: unknown; error: unknown };
       
       const { data, error } = insertResult;
 
@@ -69,7 +70,8 @@ const ProfileSetup: React.FC = () => {
       if (error) {
         console.error('❌ Profile creation error:', error);
         
-        if (error.code === '23505') { // Unique constraint violation
+        const errorObj = error as { code?: string; message?: string };
+        if (errorObj.code === '23505') { // Unique constraint violation
           console.log('🔄 Profile already exists, updating...');
           // Profile already exists, try to update it
           const { data: updateData, error: updateError } = await supabase
@@ -90,7 +92,8 @@ const ProfileSetup: React.FC = () => {
             }, 2000);
           }
         } else {
-          setMessage(`❌ Error creating profile: ${error.message}`);
+          const errorMessage = errorObj.message || 'Unknown error occurred';
+          setMessage(`❌ Error creating profile: ${errorMessage}`);
         }
       } else {
         console.log('✅ Profile created successfully:', data);
